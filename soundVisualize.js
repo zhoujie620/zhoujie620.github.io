@@ -64,6 +64,7 @@
 let boxes = []; // 存储所有方块的数组
 const numBoxes = 20; // 方块的数量
 const boxSize = 50; // 方块的尺寸
+const gravity = 0.5; // 重力加速度
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -92,6 +93,9 @@ class Box {
     this.y = y;
     this.size = size;
     this.color = color(random(100, 255), random(100, 255), random(100, 255));
+    this.vx = 0; // 水平速度
+    this.vy = 0; // 垂直速度
+    this.damping = 0.8; // 反弹阻尼系数
   }
 
   // 更新方块位置
@@ -100,13 +104,23 @@ class Box {
     let ax = accelerationX;
     let ay = accelerationY;
 
-    // 根据加速度移动方块
-    this.x += ax * 2;
-    this.y += ay * 2;
+    // 根据加速度更新水平速度
+    this.vx += ax * 0.1;
+    this.vy += gravity; // 应用重力加速度
 
-    // 边界检测，防止方块移出屏幕
-    this.x = constrain(this.x, 0, width - this.size);
-    this.y = constrain(this.y, 0, height - this.size);
+    // 更新方块位置
+    this.x += this.vx;
+    this.y += this.vy;
+
+    // 边界检测和反弹
+    if (this.x < 0 || this.x + this.size > width) {
+      this.vx *= -this.damping; // 水平反弹
+      this.x = constrain(this.x, 0, width - this.size);
+    }
+    if (this.y + this.size > height) {
+      this.vy *= -this.damping; // 垂直反弹
+      this.y = constrain(this.y, 0, height - this.size);
+    }
   }
 
   // 显示方块
