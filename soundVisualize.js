@@ -61,76 +61,103 @@
 // Rotate the device by 90 degrees in the
 // X-axis to change the value.
 
-let boxes = []; // 存储所有方块的数组
-const numBoxes = 20; // 方块的数量
-const boxSize = 50; // 方块的尺寸
-const gravity = 0.5; // 重力加速度
+let ball; // 小球对象
+let gravity; // 重力向量
 
 function setup() {
-  createCanvas(windowWidth, windowHeight);
-  noStroke();
-
-  // 初始化多个方块
-  for (let i = 0; i < numBoxes; i++) {
-    boxes.push(new Box(random(width), random(height), boxSize));
-  }
+  createCanvas(windowWidth, windowHeight); // 创建画布，适应屏幕大小
+  ball = new Ball(width / 2, height / 2, 30); // 初始化小球
+  gravity = createVector(0, 0); // 初始化重力向量
 }
 
 function draw() {
-  background(30);
+  background(220);
 
-  // 更新并显示所有方块
-  for (let box of boxes) {
-    box.update();
-    box.display();
+  // 更新重力向量
+  updateGravity();
+
+  // 应用重力到小球
+  ball.applyForce(gravity);
+
+  // 更新小球位置
+  ball.update();
+  ball.edges(); // 处理边界碰撞
+  ball.display(); // 显示小球
+}
+
+// 更新重力向量
+function updateGravity() {
+  // 根据设备的角度调整重力
+  if (typeof(DeviceOrientationEvent) !== 'undefined' && DeviceOrientationEvent.requestPermission) {
+    // 在 iOS 设备上请求权限
+    DeviceOrientationEvent.requestPermission()
+      .then(response => {
+        if (response === 'granted') {
+          window.addEventListener('deviceorientation', handleOrientation);
+        }
+      })
+      .catch(console.error);
+  } else {
+    // 其他设备直接监听事件
+    window.addEventListener('deviceorientation', handleOrientation);
   }
 }
 
-// 方块类
-class Box {
-  constructor(x, y, size) {
-    this.x = x;
-    this.y = y;
-    this.size = size;
-    this.color = color(random(100, 255), random(100, 255), random(100, 255));
-    this.vx = 0; // 水平速度
-    this.vy = 0; // 垂直速度
-    this.damping = 0.8; // 反弹阻尼系数
+// 处理设备方向事件
+function handleOrientation(event) {
+  // 获取设备的 beta（前后倾斜）和 gamma（左右倾斜）角度
+  let beta = radians(event.beta); // 前后倾斜角度（-180 到 180）
+  let gamma = radians(event.gamma); // 左右倾斜角度（-90 到 90）
+
+  // 根据角度计算重力向量
+  gravity.x = sin(gamma) * 0.5; // 左右倾斜影响 x 方向
+  gravity.y = sin(beta) * 0.5; // 前后倾斜影响 y 方向
+}
+
+// 小球类
+class Ball {
+  constructor(x, y, r) {
+    this.pos = createVector(x, y); // 位置
+    this.vel = createVector(0, 0); // 速度
+    this.acc = createVector(0, 0); // 加速度
+    this.r = r; // 半径
   }
 
-  // 更新方块位置
+  // 应用力
+  applyForce(force) {
+    this.acc.add(force);
+  }
+
+  // 更新位置
   update() {
-    // 获取设备的加速度数据
-    let ax = accelerationX;
-    let ay = accelerationY;
+    this.vel.add(this.acc);
+    this.pos.add(this.vel);
+    this.acc.mult(0); // 重置加速度
+  }
 
-    // 根据加速度更新水平速度
-    this.vx += ax * 0.1;
-    this.vy += gravity; // 应用重力加速度
-
-    // 更新方块位置
-    this.x += this.vx;
-    this.y += this.vy;
-
-    // 边界检测和反弹
-    if (this.x < 0 || this.x + this.size > width) {
-      this.vx *= -this.damping; // 水平反弹
-      this.x = constrain(this.x, 0, width - this.size);
+  // 处理边界碰撞
+  edges() {
+    if (this.pos.x < this.r) {
+      this.pos.x = this.r;
+      this.vel.x *= -0.8; // 反弹并减少速度
+    } else if (this.pos.x > width - this.r) {
+      this.pos.x = width - this.r;
+      this.vel.x *= -0.8;
     }
-    if (this.y + this.size > height) {
-      this.vy *= -this.damping; // 垂直反弹
-      this.y = constrain(this.y, 0, height - this.size);
+
+    if (this.pos.y < this.r) {
+      this.pos.y = this.r;
+      this.vel.y *= -0.8;
+    } else if (this.pos.y > height - this.r) {
+      this.pos.y = height - this.r;
+      this.vel.y *= -0.8;
     }
   }
 
-  // 显示方块
+  // 显示小球
   display() {
-    fill(this.color);
-    rect(this.x, this.y, this.size, this.size);
+    fill(255, 0, 0);
+    noStroke();
+    ellipse(this.pos.x, this.pos.y, this.r * 2);
   }
-}
-
-// 窗口大小变化时调整画布
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
 }
