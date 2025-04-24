@@ -63,15 +63,36 @@
 
 let ball; // 小球对象
 let gravity; // 重力向量
+let permissionGranted = false; // 权限是否已授予
 
 function setup() {
   createCanvas(windowWidth, windowHeight); // 创建画布，适应屏幕大小
   ball = new Ball(width / 2, height / 2, 30); // 初始化小球
   gravity = createVector(0, 0); // 初始化重力向量
+
+  // 检查是否需要请求权限
+  if (typeof(DeviceOrientationEvent) !== 'undefined' && DeviceOrientationEvent.requestPermission) {
+    // 显示提示信息
+    textSize(20);
+    textAlign(CENTER, CENTER);
+    text("点击屏幕以允许访问设备方向数据", width / 2, height / 2);
+  } else {
+    // 如果不需要请求权限，直接监听设备方向事件
+    permissionGranted = true;
+    window.addEventListener('deviceorientation', handleOrientation);
+  }
 }
 
 function draw() {
   background(220);
+
+  if (!permissionGranted) {
+    // 如果权限未授予，显示提示信息
+    textSize(20);
+    textAlign(CENTER, CENTER);
+    text("点击屏幕以允许访问设备方向数据", width / 2, height / 2);
+    return;
+  }
 
   // 更新重力向量
   updateGravity();
@@ -87,18 +108,8 @@ function draw() {
 
 // 更新重力向量
 function updateGravity() {
-  // 根据设备的角度调整重力
-  if (typeof(DeviceOrientationEvent) !== 'undefined' && DeviceOrientationEvent.requestPermission) {
-    // 在 iOS 设备上请求权限
-    DeviceOrientationEvent.requestPermission()
-      .then(response => {
-        if (response === 'granted') {
-          window.addEventListener('deviceorientation', handleOrientation);
-        }
-      })
-      .catch(console.error);
-  } else {
-    // 其他设备直接监听事件
+  if (permissionGranted) {
+    // 如果权限已授予，直接监听设备方向事件
     window.addEventListener('deviceorientation', handleOrientation);
   }
 }
@@ -160,4 +171,19 @@ class Ball {
     noStroke();
     ellipse(this.pos.x, this.pos.y, this.r * 2);
   }
+}
+
+// 点击屏幕时请求权限
+function touchStarted() {
+  if (!permissionGranted && typeof(DeviceOrientationEvent) !== 'undefined' && DeviceOrientationEvent.requestPermission) {
+    DeviceOrientationEvent.requestPermission()
+      .then(response => {
+        if (response === 'granted') {
+          permissionGranted = true;
+          window.addEventListener('deviceorientation', handleOrientation);
+        }
+      })
+      .catch(console.error);
+  }
+  return false; // 阻止默认行为
 }
